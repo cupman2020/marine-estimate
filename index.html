@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Marine Estimate Search</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy: #0a1628;
+    --navy2: #112240;
+    --teal: #00b4d8;
+    --teal2: #0077b6;
+    --gold: #ffd60a;
+    --white: #e8f4f8;
+    --gray: #8892a4;
+    --success: #00c896;
+    --danger: #ff4757;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--navy);
+    color: var(--white);
+    font-family: 'Sarabun', sans-serif;
+    min-height: 100vh;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at 20% 50%, rgba(0,180,216,0.08) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 20%, rgba(0,119,182,0.1) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .app {
+    position: relative;
+    z-index: 1;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 0 30px;
+    border-bottom: 1px solid rgba(0,180,216,0.2);
+    margin-bottom: 24px;
+  }
+  .logo { display: flex; align-items: center; gap: 12px; }
+  .logo-icon {
+    width: 42px; height: 42px;
+    background: linear-gradient(135deg, var(--teal), var(--teal2));
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+  }
+  .logo-text h1 { font-size: 18px; font-weight: 700; }
+  .logo-text p { font-size: 12px; color: var(--teal); font-family: 'Space Mono', monospace; }
+  .status-badge {
+    display: flex; align-items: center; gap: 6px;
+    background: rgba(0,200,150,0.1);
+    border: 1px solid rgba(0,200,150,0.3);
+    padding: 6px 12px; border-radius: 20px;
+    font-size: 12px; color: var(--success);
+    font-family: 'Space Mono', monospace;
+  }
+  .status-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--success); animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  #auth-section {
+    background: var(--navy2);
+    border: 1px solid rgba(0,180,216,0.2);
+    border-radius: 16px; padding: 40px;
+    text-align: center; margin-bottom: 24px;
+  }
+  #auth-section h2 { font-size: 22px; margin-bottom: 10px; }
+  #auth-section p { color: var(--gray); margin-bottom: 28px; font-size: 15px; }
+  .btn-connect {
+    background: linear-gradient(135deg, var(--teal), var(--teal2));
+    color: white; border: none; padding: 14px 32px;
+    border-radius: 10px; font-size: 16px;
+    font-family: 'Sarabun', sans-serif;
+    cursor: pointer; font-weight: 600;
+    transition: transform 0.2s, box-shadow 0.2s;
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .btn-connect:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,180,216,0.35); }
+
+  #chat-section { display: none; flex-direction: column; flex: 1; }
+  .sync-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    background: rgba(0,200,150,0.06);
+    border: 1px solid rgba(0,200,150,0.2);
+    border-radius: 10px; padding: 10px 16px;
+    margin-bottom: 16px; font-size: 12px;
+  }
+  .sync-bar .sync-info { color: var(--gray); }
+  .sync-bar .sync-info strong { color: var(--success); }
+  .btn-sync {
+    background: transparent;
+    border: 1px solid rgba(0,200,150,0.4);
+    color: var(--success); padding: 5px 12px;
+    border-radius: 6px; font-size: 11px;
+    font-family: 'Space Mono', monospace;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .btn-sync:hover { background: rgba(0,200,150,0.1); }
+
+  .quick-actions {
+    display: grid; grid-template-columns: repeat(2, 1fr);
+    gap: 10px; margin-bottom: 20px;
+  }
+  @media(max-width:600px){ .quick-actions{ grid-template-columns:1fr; } }
+  .quick-btn {
+    background: var(--navy2);
+    border: 1px solid rgba(0,180,216,0.2);
+    color: var(--white); padding: 12px 16px;
+    border-radius: 10px; font-size: 13px;
+    font-family: 'Sarabun', sans-serif;
+    cursor: pointer; text-align: left;
+    transition: all 0.2s;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .quick-btn:hover { border-color: var(--teal); background: rgba(0,180,216,0.08); transform: translateY(-1px); }
+
+  .messages {
+    flex: 1; overflow-y: auto;
+    display: flex; flex-direction: column;
+    gap: 16px; padding: 4px 0 20px;
+    min-height: 300px; max-height: 450px;
+  }
+  .messages::-webkit-scrollbar { width: 4px; }
+  .messages::-webkit-scrollbar-thumb { background: rgba(0,180,216,0.3); border-radius: 2px; }
+
+  .message { display: flex; gap: 10px; animation: fadeIn 0.3s ease; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+  .message.user { flex-direction: row-reverse; }
+  .avatar {
+    width: 34px; height: 34px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; flex-shrink: 0;
+  }
+  .avatar.ai { background: linear-gradient(135deg, var(--teal), var(--teal2)); }
+  .avatar.user-av { background: rgba(255,214,10,0.15); border: 1px solid rgba(255,214,10,0.3); }
+  .bubble {
+    max-width: 75%; padding: 12px 16px;
+    border-radius: 12px; font-size: 14px; line-height: 1.6;
+  }
+  .message.ai .bubble {
+    background: var(--navy2);
+    border: 1px solid rgba(0,180,216,0.15);
+    border-top-left-radius: 2px;
+  }
+  .message.user .bubble {
+    background: rgba(0,180,216,0.15);
+    border: 1px solid rgba(0,180,216,0.25);
+    border-top-right-radius: 2px; text-align: right;
+  }
+  .input-area {
+    background: var(--navy2);
+    border: 1px solid rgba(0,180,216,0.25);
+    border-radius: 14px; padding: 12px 16px;
+    display: flex; align-items: flex-end; gap: 10px;
+    transition: border-color 0.2s;
+  }
+  .input-area:focus-within { border-color: var(--teal); }
+  textarea {
+    flex: 1; background: transparent; border: none; outline: none;
+    color: var(--white); font-size: 14px;
+    font-family: 'Sarabun', sans-serif;
+    resize: none; max-height: 120px; min-height: 24px; line-height: 1.5;
+  }
+  textarea::placeholder { color: var(--gray); }
+  .send-btn {
+    background: linear-gradient(135deg, var(--teal), var(--teal2));
+    border: none; width: 36px; height: 36px;
+    border-radius: 8px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .send-btn:hover { transform: scale(1.05); box-shadow: 0 4px 15px rgba(0,180,216,0.4); }
+  .send-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .send-btn svg { width: 16px; height: 16px; fill: white; }
+  .typing { display: flex; gap: 5px; align-items: center; padding: 8px 0; }
+  .typing span {
+    width: 7px; height: 7px;
+    background: var(--teal); border-radius: 50%;
+    animation: bounce 1.2s infinite;
+  }
+  .typing span:nth-child(2) { animation-delay: 0.2s; }
+  .typing span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce { 0%,80%,100%{transform:translateY(0)} 40%{transform:translateY(-8px)} }
+  .loading-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(10,22,40,0.85); z-index: 100;
+    align-items: center; justify-content: center;
+    flex-direction: column; gap: 16px;
+  }
+  .loading-overlay.show { display: flex; }
+  .spinner {
+    width: 44px; height: 44px;
+    border: 3px solid rgba(0,180,216,0.2);
+    border-top-color: var(--teal); border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to{transform:rotate(360deg)} }
+  .loading-text { color: var(--teal); font-size: 14px; font-family: 'Space Mono', monospace; }
+  table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
+  th { background: rgba(0,180,216,0.1); color: var(--teal); padding: 8px 10px; text-align: left; font-family: 'Space Mono', monospace; font-size: 11px; }
+  td { padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+  tr:hover td { background: rgba(0,180,216,0.05); }
+</style>
+</head>
+<body>
+<div class="loading-overlay" id="loading">
+  <div class="spinner"></div>
+  <div class="loading-text" id="loading-text">กำลังเชื่อมต่อ...</div>
+</div>
+
+<div class="app">
+  <header>
+    <div class="logo">
+      <div class="logo-icon">⚓</div>
+      <div class="logo-text">
+        <h1>Marine Estimate Search</h1>
+        <p>Chareon Marine · QuickBooks AI</p>
+      </div>
+    </div>
+    <div class="status-badge">
+      <div class="status-dot"></div>
+      <span id="status-text">ยังไม่เชื่อมต่อ</span>
+    </div>
+  </header>
+
+  <div id="auth-section">
+    <h2>🔗 เชื่อมต่อ QuickBooks</h2>
+    <p>กรุณาเชื่อมต่อบัญชี QuickBooks เพื่อเริ่มค้นหาข้อมูลงานซ่อมเรือ</p>
+    <button class="btn-connect" onclick="connectQuickBooks()">
+      🔐 เชื่อมต่อ QuickBooks Online
+    </button>
+  </div>
+
+  <div id="chat-section">
+    <div class="sync-bar">
+      <div class="sync-info">
+        📊 Sync ล่าสุด: <strong id="sync-time">-</strong>
+        &nbsp;·&nbsp; Estimates: <strong id="est-count">-</strong>
+        &nbsp;·&nbsp; Invoices: <strong id="inv-count">-</strong>
+      </div>
+      <button class="btn-sync" onclick="syncData()">⟳ Sync ใหม่</button>
+    </div>
+
+    <div class="quick-actions">
+      <button class="quick-btn" onclick="quickAsk('ดูงานทั้งหมดใน 3 เดือนล่าสุด')">
+        <span>📋</span> งานล่าสุด 3 เดือน
+      </button>
+      <button class="quick-btn" onclick="quickAsk('ราคาเฉลี่ยของงานแต่ละประเภทที่เคยเสนอ')">
+        <span>💰</span> ราคาเฉลี่ยตามประเภท
+      </button>
+      <button class="quick-btn" onclick="quickAsk('งานซ่อมตัวเรือที่เคยทำมีราคาเท่าไหร่บ้าง')">
+        <span>🔧</span> งานซ่อมตัวเรือ
+      </button>
+      <button class="quick-btn" onclick="quickAsk('ช่วยร่างใบเสนอราคางานใหม่ให้หน่อย')">
+        <span>📝</span> ร่างใบเสนอราคา
+      </button>
+    </div>
+
+    <div class="messages" id="messages">
+      <div class="message ai">
+        <div class="avatar ai">⚓</div>
+        <div class="bubble">
+          สวัสดีครับ! พร้อมช่วยค้นหาข้อมูลงานซ่อมเรือจาก QuickBooks แล้ว 🚢<br><br>
+          ถามได้เลยครับ เช่น:<br>
+          • "งานพ่นสีกันเพรียง 40 ฟุต เคยทำราคาเท่าไหร่?"<br>
+          • "ลูกค้า ABC เคยสั่งงานอะไรบ้าง?"<br>
+          • "ช่วยร่างใบเสนอราคาซ่อมเครื่องยนต์ให้หน่อย"
+        </div>
+      </div>
+    </div>
+
+    <div class="input-area">
+      <textarea id="user-input"
+        placeholder="ถามเกี่ยวกับงานซ่อมเรือ..."
+        rows="1"
+        onkeydown="handleKey(event)"
+        oninput="autoResize(this)"></textarea>
+      <button class="send-btn" id="send-btn" onclick="sendMessage()">
+        <svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+const QB_CLIENT_ID = 'REPLACE_QB_CLIENT_ID';
+const QB_REDIRECT_URI = window.location.origin + '/api/callback';
+const QB_SCOPE = 'com.intuit.quickbooks.accounting';
+
+let qbData = {
+  access_token: localStorage.getItem('qb_access_token'),
+  refresh_token: localStorage.getItem('qb_refresh_token'),
+  realm_id: localStorage.getItem('qb_realm_id'),
+  estimates: JSON.parse(localStorage.getItem('qb_estimates') || '[]'),
+  invoices: JSON.parse(localStorage.getItem('qb_invoices') || '[]'),
+  items: JSON.parse(localStorage.getItem('qb_items') || '[]'),
+  last_sync: localStorage.getItem('qb_last_sync'),
+};
+
+window.onload = async () => {
+  const params = new URLSearchParams(window.location.search);
+
+  if (params.get('error')) {
+    alert('เกิดข้อผิดพลาด: ' + params.get('error'));
+    window.history.replaceState({}, '', '/');
+    return;
+  }
+
+  if (params.get('access_token')) {
+    qbData.access_token = params.get('access_token');
+    qbData.refresh_token = params.get('refresh_token');
+    qbData.realm_id = params.get('realm_id');
+    localStorage.setItem('qb_access_token', qbData.access_token);
+    localStorage.setItem('qb_refresh_token', qbData.refresh_token);
+    localStorage.setItem('qb_realm_id', qbData.realm_id);
+    window.history.replaceState({}, '', '/');
+    showChat();
+    await syncData();
+    return;
+  }
+
+  if (qbData.access_token && qbData.realm_id) {
+    showChat();
+    updateSyncBar();
+    if (!qbData.last_sync) await syncData();
+  }
+};
+
+function connectQuickBooks() {
+  const state = Math.random().toString(36).substring(7);
+  localStorage.setItem('qb_state', state);
+  const url = 'https://appcenter.intuit.com/connect/oauth2?' + new URLSearchParams({
+    client_id: QB_CLIENT_ID,
+    scope: QB_SCOPE,
+    redirect_uri: QB_REDIRECT_URI,
+    response_type: 'code',
+    state: state,
+  });
+  window.location.href = url;
+}
+
+async function syncData() {
+  showLoading('กำลัง sync ข้อมูลจาก QuickBooks...');
+  try {
+    const res = await fetch('/api/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        access_token: qbData.access_token,
+        refresh_token: qbData.refresh_token,
+        realm_id: qbData.realm_id,
+      }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Sync failed');
+
+    if (data.new_token) {
+      qbData.access_token = data.new_token;
+      localStorage.setItem('qb_access_token', data.new_token);
+    }
+
+    qbData.estimates = data.estimates;
+    qbData.invoices = data.invoices;
+    qbData.items = data.items;
+    qbData.last_sync = new Date().toLocaleString('th-TH');
+
+    localStorage.setItem('qb_estimates', JSON.stringify(data.estimates));
+    localStorage.setItem('qb_invoices', JSON.stringify(data.invoices));
+    localStorage.setItem('qb_items', JSON.stringify(data.items));
+    localStorage.setItem('qb_last_sync', qbData.last_sync);
+
+    updateSyncBar();
+    addMessage('ai', `✅ Sync เสร็จแล้วครับ!\n📋 Estimates: ${data.estimates.length} รายการ\n🧾 Invoices: ${data.invoices.length} รายการ`);
+  } catch (err) {
+    addMessage('ai', '⚠️ Sync ไม่สำเร็จ: ' + err.message);
+  }
+  hideLoading();
+}
+
+async function sendMessage() {
+  const input = document.getElementById('user-input');
+  const text = input.value.trim();
+  if (!text) return;
+
+  input.value = '';
+  input.style.height = 'auto';
+  document.getElementById('send-btn').disabled = true;
+  addMessage('user', text);
+
+  const typingId = addTyping();
+  try {
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        question: text,
+        estimates: qbData.estimates,
+        invoices: qbData.invoices,
+        items: qbData.items,
+      }),
+    });
+    const data = await res.json();
+    removeTyping(typingId);
+    addMessage('ai', data.reply || 'ไม่ได้รับการตอบกลับ');
+  } catch (err) {
+    removeTyping(typingId);
+    addMessage('ai', '⚠️ เกิดข้อผิดพลาด: ' + err.message);
+  }
+  document.getElementById('send-btn').disabled = false;
+}
+
+function quickAsk(text) {
+  document.getElementById('user-input').value = text;
+  sendMessage();
+}
+
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+function updateSyncBar() {
+  document.getElementById('sync-time').textContent = qbData.last_sync || '-';
+  document.getElementById('est-count').textContent = qbData.estimates.length;
+  document.getElementById('inv-count').textContent = qbData.invoices.length;
+  document.getElementById('status-text').textContent = 'เชื่อมต่อแล้ว';
+}
+
+function addMessage(role, text) {
+  const messages = document.getElementById('messages');
+  const div = document.createElement('div');
+  div.className = `message ${role}`;
+  const avatar = role === 'ai'
+    ? '<div class="avatar ai">⚓</div>'
+    : '<div class="avatar user-av">👤</div>';
+  let html = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+  // Restore HTML tables
+  html = html
+    .replace(/&lt;table&gt;/g,'<table>').replace(/&lt;\/table&gt;/g,'</table>')
+    .replace(/&lt;thead&gt;/g,'<thead>').replace(/&lt;\/thead&gt;/g,'</thead>')
+    .replace(/&lt;tbody&gt;/g,'<tbody>').replace(/&lt;\/tbody&gt;/g,'</tbody>')
+    .replace(/&lt;tr&gt;/g,'<tr>').replace(/&lt;\/tr&gt;/g,'</tr>')
+    .replace(/&lt;th&gt;/g,'<th>').replace(/&lt;\/th&gt;/g,'</th>')
+    .replace(/&lt;td&gt;/g,'<td>').replace(/&lt;\/td&gt;/g,'</td>');
+  div.innerHTML = `${avatar}<div class="bubble">${html}</div>`;
+  messages.appendChild(div);
+  messages.scrollTop = messages.scrollHeight;
+}
+
+function addTyping() {
+  const messages = document.getElementById('messages');
+  const id = 'typing-' + Date.now();
+  const div = document.createElement('div');
+  div.id = id;
+  div.className = 'message ai';
+  div.innerHTML = `<div class="avatar ai">⚓</div><div class="bubble"><div class="typing"><span></span><span></span><span></span></div></div>`;
+  messages.appendChild(div);
+  messages.scrollTop = messages.scrollHeight;
+  return id;
+}
+
+function removeTyping(id) { document.getElementById(id)?.remove(); }
+
+function showChat() {
+  document.getElementById('auth-section').style.display = 'none';
+  document.getElementById('chat-section').style.display = 'flex';
+}
+
+function showLoading(text) {
+  document.getElementById('loading-text').textContent = text;
+  document.getElementById('loading').classList.add('show');
+}
+
+function hideLoading() { document.getElementById('loading').classList.remove('show'); }
+</script>
+</body>
+</html>
