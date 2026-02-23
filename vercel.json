@@ -1,18 +1,3 @@
-	
-version	2
-functions	
-api/*.js	
-runtime	"nodejs18.x"
-routes	
-0	
-src	"/api/callback"
-dest	"/api/callback.js"
-1	
-src	"/api/sync"
-dest	"/api/sync.js"
-2	
-src	"/api/chat"
-dest	"/api/chat.js"
-3	
-src	"/(.*)"
-dest	"/index.html"
+{
+  "version": 2
+}
